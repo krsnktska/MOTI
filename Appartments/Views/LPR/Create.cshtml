@@ -1,0 +1,92 @@
+<div class="container d-flex justify-content-center">
+    <div class="card auth-card p-4">
+        <h3 class="text-center mb-4">Вибір квартири</h3>
+
+        <ul class="nav nav-tabs mb-4 justify-content-center" id="authTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login"
+                    type="button">Вхід</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register"
+                    type="button">Реєстрація</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="authTabContent">
+            <div class="tab-pane fade show active" id="login" role="tabpanel">
+                <div class="mb-3">
+                    <label class="form-label">Ім'я користувача</label>
+                    <input type="text" id="loginName" class="form-control mb-3" placeholder="Введіть ваше ім'я">
+
+                    <input type="password" id="loginPass" class="form-control mb-3" placeholder="Пароль">
+                </div>
+                <button onclick="authLpr()" class="btn btn-primary w-100">Увійти в систему</button>
+            </div>
+
+            <div class="tab-pane fade" id="register" role="tabpanel">
+                <div class="mb-3">
+                    <label class="form-label">Ваше ім'я</label>
+                    <input type="text" id="regName" class="form-control mb-3" placeholder="Як вас звати?">
+
+                    <input type="password" id="regPass" class="form-control mb-3" placeholder="Придумайте пароль">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ранг (компетентність)</label>
+                    <input type="number" step="0.1" id="regRank" class="form-control" value="1.0">
+                </div>
+                <button onclick="registerLpr()" class="btn btn-success w-100">Зареєструватися</button>
+            </div>
+        </div>
+        <div id="message" class="mt-3 text-center small"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    async function authLpr() {
+        console.log("Спроба входу...");
+        const name = document.getElementById('loginName').value;
+        const password = document.getElementById('loginPass').value;
+
+        const data = { name, password };
+
+        const resp = await fetch('/api/Lpr/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (resp.ok) {
+            const user = await resp.json();
+            localStorage.setItem('lpr_id', user.lpr_id || user.lpR_id);
+            alert(`Вітаємо, ${user.name}!`);
+            window.location.href = '/Alternatives/Index';
+        } else {
+            alert("Помилка: перевірте дані входу");
+        }
+    }
+
+    async function registerLpr() {
+        console.log("Спроба реєстрації...");
+        const data = {
+            name: document.getElementById('regName').value,
+            password: document.getElementById('regPass').value,
+            rank: parseFloat(document.getElementById('regRank').value)
+        };
+
+        const resp = await fetch('/api/Lpr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (resp.ok) {
+            alert("Реєстрація успішна! Тепер увійдіть.");
+            location.reload();
+        } else {
+            alert("Помилка реєстрації. Перевірте консоль.");
+        }
+    }
+</script>

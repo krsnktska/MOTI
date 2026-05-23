@@ -1,0 +1,89 @@
+@{
+    ViewData["Title"] = "Квартири";
+}
+
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h2 class="text-center mb-4">🏠 Список квартир</h2>
+
+        <div class="input-group mb-4">
+            <input type="text" id="newAltName" class="form-control" placeholder="Назва квартири (напр. Центр, 2-кімнатна)">
+            <button class="btn btn-success" onclick="addAlternative()">Додати квартиру</button>
+        </div>
+
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Назва квартири</th>
+                    <th>Дії</th>
+                </tr>
+            </thead>
+            <tbody id="altTableBody">
+                </tbody>
+        </table>
+        
+        <div class="text-end mt-3">
+            <a href="/Criteria/Index" class="btn btn-primary">Далі до Критеріїв ➡️</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadAlternatives() {
+        const resp = await fetch('/api/Alternative');
+        if (resp.ok) {
+            const data = await resp.json();
+            const tbody = document.getElementById('altTableBody');
+            tbody.innerHTML = '';
+            data.forEach(alt => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${alt.alternative_id || alt.alternative_id}</td>
+                        <td>${alt.name}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="deleteAlt(${alt.alternative_id})">Видалити</button></td>
+                    </tr>`;
+            });
+        }
+    }
+
+    async function addAlternative() {
+        const nameInput = document.getElementById('newAltName');
+        if (!nameInput.value) { alert("Введіть назву!"); return; }
+
+        const data = { name: nameInput.value };
+
+        const resp = await fetch('/api/Alternative', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (handleUnauthorized(resp)) return;
+
+        if (resp.ok) {
+            nameInput.value = '';
+            loadAlternatives();
+        } else {
+            alert("Помилка при додаванні");
+        }
+    }
+    loadAlternatives();
+
+    async function deleteAlt(id) {
+        if (!confirm("Ви впевнені, що хочете видалити цю квартиру?")) {
+            return;
+        }
+
+        const resp = await fetch(`/api/Alternative/${id}`, {
+            method: 'DELETE'
+        });
+        if (handleUnauthorized(resp)) return;
+
+        if (resp.ok) {
+            loadAlternatives();
+        } else {
+            const error = await resp.text();
+            alert("Помилка при видаленні: " + error);
+        }
+    }
+</script>

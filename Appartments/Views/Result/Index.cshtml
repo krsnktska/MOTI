@@ -1,0 +1,221 @@
+@{
+    ViewData["Title"] = "Рейтинг";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden bg-white mb-4">
+                <div class="card-header bg-gradient-dark text-white p-4"
+                    style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-0 fw-bold">🏆 Глобальний рейтинг альтернатив</h2>
+                            <p class="mb-0 opacity-75">Оцінки квартир від усіх користувачів</p>
+                        </div>
+                        <a href="/Result/Compare" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+                            ⚔️ Порівняти квартири
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body p-4 bg-light bg-opacity-30" id="leaderboardContainer">
+                    <div class="text-center py-5" id="loadingSpinner">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted">Завантаження рейтингу...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alt-card {
+        border-left: 6px solid #4e73df;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .alt-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .rating-item {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 12px 0;
+        transition: background-color 0.2s;
+    }
+
+    .rating-item:last-child {
+        border-bottom: none;
+    }
+
+    .rating-item:hover {
+        background-color: rgba(78, 115, 223, 0.02);
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+
+    .stars-display {
+        font-size: 1.15rem;
+        letter-spacing: 2px;
+    }
+
+    .btn-delete {
+        opacity: 0.6;
+        transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .btn-delete:hover {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+</style>
+
+<script>
+    let currentUserId = null;
+
+    async function checkCurrentUser() {
+        try {
+            const resp = await fetch('/api/Lpr/current');
+            if (resp.ok) {
+                const user = await resp.json();
+                currentUserId = user.lpr_id || user.lpR_id || user.LPR_id;
+            }
+        } catch (err) {
+            console.error("Not logged in");
+        }
+    }
+
+    async function deleteRating(altId) {
+        if (!confirm('Ви впевнені, що хочете видалити свою оцінку для цієї квартири?')) return;
+
+        try {
+            const resp = await fetch(`/api/Result/my/${altId}`, { method: 'DELETE' });
+            if (resp.ok) {
+                loadLeaderboard();
+            } else {
+                alert('Помилка при видаленні оцінки.');
+            }
+        } catch (err) {
+            console.error("Delete error:", err);
+        }
+    }
+
+    function renderStars(score) {
+        const rounded = Math.round(score || 0);
+        let html = '';
+        for (let i = 1; i <= 10; i++) {
+            if (i <= rounded) {
+                html += '⭐';
+            } else {
+                html += '<span class="text-muted" style="opacity: 0.25;">⭐</span>';
+            }
+        }
+        return html;
+    }
+
+    async function loadLeaderboard() {
+        await checkCurrentUser();
+        try {
+            const resp = await fetch('/api/Result');
+            const container = document.getElementById('leaderboardContainer');
+
+            if (resp.ok) {
+                const groups = await resp.json();
+                container.innerHTML = '';
+
+                if (!groups || groups.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-5 text-muted">
+                            <h4 class="mb-2">Поки що немає оцінок</h4>
+                            <p class="mb-0">Будь ласка, перейдіть до порівняння квартир, щоб залишити першу оцінку.</p>
+                        </div>`;
+                    return;
+                }
+
+                groups.forEach(group => {
+                    const altId = group.alternativeId || group.AlternativeId || group.alternative_id;
+                    const altName = group.alternativeName || group.AlternativeName || group.alternative_name;
+                    const ratings = group.ratings || group.Ratings || [];
+
+                    let ratingsHtml = '';
+
+                    if (ratings.length === 0) {
+                        ratingsHtml = '<div class="text-muted py-2 small ps-2">Оцінки відсутні</div>';
+                    } else {
+                        ratings.forEach(r => {
+                            const rId = r.result_id || r.resultId || r.Result_id;
+                            const lprId = r.lpr_id || r.lpR_id || r.lprId || r.LPR_id;
+                            const lprName = r.lprName || r.LprName || r.lpr_name;
+                            const score = r.score !== undefined ? r.score : r.Score;
+
+                            const isOwn = lprId === currentUserId;
+
+                            ratingsHtml += `
+                                <div class="rating-item d-flex justify-content-between align-items-center px-2 rounded">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3 user-avatar shadow-sm">
+                                            ${lprName.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <span class="fw-bold ${isOwn ? 'text-primary' : 'text-dark'}">${lprName}</span>
+                                            ${isOwn ? '<span class="badge bg-info text-white ms-2" style="font-size: 0.65rem; padding: 3px 6px;">ВИ</span>' : ''}
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-center">
+                                        <div class="stars-display me-3 text-warning">${renderStars(score)}</div>
+                                        <span class="badge bg-light text-dark border me-3 fw-bold" style="font-size: 0.85rem;">${score} / 10</span>
+
+                                        <div style="width: 32px;" class="text-end">
+                                            ${isOwn ? `
+                                                <button class="btn btn-link text-danger p-0 border-0 btn-delete" onclick="deleteRating(${altId})" title="Видалити мою оцінку">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                        <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z"/>
+                                                    </svg>
+                                                </button>` : ''}
+                                        </div>
+                                    </div>
+                                </div>`;
+                        });
+                    }
+
+                    container.innerHTML += `
+                        <div class="card alt-card mb-4 shadow-sm border-0 rounded-4 overflow-hidden bg-white">
+                            <div class="card-header bg-white py-3 border-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h4 class="mb-0 fw-bold text-dark d-flex align-items-center">
+                                        <span class="me-2">🏠</span> ${altName}
+                                    </h4>
+                                    <span class="badge rounded-pill bg-light text-primary border px-3 py-2 fw-bold" style="font-size: 0.85rem;">
+                                        Кількість оцінок: ${ratings.length}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body bg-light bg-opacity-25 pt-0 px-4 pb-3">
+                                <hr class="mt-0 mb-3 text-muted opacity-25">
+                                <h6 class="text-uppercase text-muted fw-bold mb-3" style="font-size: 0.7rem; letter-spacing: 1px;">Оцінки від користувачів:</h6>
+                                <div class="d-flex flex-column gap-1">
+                                    ${ratingsHtml}
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            } else {
+                container.innerHTML = '<div class="alert alert-danger text-center">Помилка при завантаженні даних рейтингу</div>';
+            }
+        } catch (err) {
+            console.error("Error loading leaderboard:", err);
+            document.getElementById('leaderboardContainer').innerHTML = '<div class="alert alert-danger text-center">Помилка при з’єднанні з сервером</div>';
+        }
+    }
+
+    loadLeaderboard();
+</script>

@@ -1,0 +1,128 @@
+@{
+    ViewData["Title"] = "Критерії вибору";
+}
+
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h2 class="text-center mb-4">Критерії оцінювання</h2>
+
+        <div class="input-group mb-4">
+            <input type="text" id="critName" class="form-control" placeholder="Назва критерію (напр. Відстань до метро)">
+            <button class="btn btn-info text-white" onclick="addCriterion()">Додати критерій</button>
+        </div>
+
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 10%">ID</th>
+                    <th>Назва критерію</th>
+                    <th style="width: 20%" class="text-center">Дії</th>
+                </tr>
+            </thead>
+            <tbody id="criteriaList">
+                </tbody>
+        </table>
+        
+        <div class="d-flex justify-content-between mt-4">
+            <a href="/Alternatives/Index" class="btn btn-secondary">⬅️ Назад до квартир</a>
+            <a href="/Vectors/Evaluate" class="btn btn-primary">Далі до оцінювання ➡️</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadCriteria() {
+        const resp = await fetch('/api/Criterion');
+        if (resp.ok) {
+            const data = await resp.json();
+            const tbody = document.getElementById('criteriaList');
+            tbody.innerHTML = '';
+            data.forEach(crit => {
+                tbody.innerHTML += `
+                    <tr id="row-${crit.criterion_id}">
+                        <td>${crit.criterion_id}</td>
+                        <td id="name-${crit.criterion_id}">${crit.name}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-warning" onclick="editCriterion(${crit.criterion_id}, '${crit.name}')">Редагувати</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCriterion(${crit.criterion_id})">Видалити</button>
+                        </td>
+                    </tr>`;
+            });
+        }
+    }
+
+    async function editCriterion(id, currentName) {
+        const nameCell = document.getElementById(`name-${id}`);
+        const row = document.getElementById(`row-${id}`);
+        
+        const actionsCell = row.cells[2];
+
+        nameCell.innerHTML = `<input type="text" id="edit-input-${id}" class="form-control form-control-sm" value="${currentName}">`;
+        
+        actionsCell.innerHTML = `
+            <button class="btn btn-sm btn-success" onclick="saveCriterion(${id})">Зберегти</button>
+            <button class="btn btn-sm btn-secondary" onclick="loadCriteria()">Скасувати</button>
+        `;
+    }
+
+    async function saveCriterion(id) {
+        const nameInput = document.getElementById(`edit-input-${id}`);
+        const newName = nameInput.value;
+
+        if (!newName) { alert("Введіть назву критерію"); return; }
+
+        const data = { criterion_id: id, name: newName };
+
+        const resp = await fetch(`/api/Criterion/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (handleUnauthorized(resp)) return;
+
+        if (resp.ok) {
+            loadCriteria();
+        } else {
+            alert("Помилка при оновленні критерію.");
+        }
+    }
+
+    async function addCriterion() {
+        const nameInput = document.getElementById('critName');
+        if (!nameInput.value) { alert("Введіть назву критерію"); return; }
+
+        const data = { name: nameInput.value };
+
+        const resp = await fetch('/api/Criterion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (handleUnauthorized(resp)) return;
+
+        if (resp.ok) {
+            nameInput.value = ''; 
+            loadCriteria();      
+        } else {
+            alert("Помилка при збереженні критерію. Перевірте консоль (F12).");
+        }
+    }
+
+    async function deleteCriterion(id) {
+        if (!confirm("Видалити цей критерій?")) return;
+
+        const resp = await fetch(`/api/Criterion/${id}`, {
+            method: 'DELETE'
+        });
+        if (handleUnauthorized(resp)) return;
+
+        if (resp.ok) {
+            loadCriteria();
+        } else {
+            alert("Не вдалося видалити критерій");
+        }
+    }
+
+    loadCriteria();
+</script>

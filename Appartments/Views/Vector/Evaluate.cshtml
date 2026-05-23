@@ -1,0 +1,117 @@
+<div class="container mt-4">
+    <h3>Оцінювання квартир</h3>
+    <div class="table-responsive">
+        <table class="table table-bordered text-center">
+            <thead class="table-dark" id="matrixHeader">
+            </thead>
+            <tbody id="matrixBody">
+            </tbody>
+        </table>
+    </div>
+    <div class="text-end mb-5">
+        <button class="btn btn-warning" onclick="saveAllMarks()">Зберегти оцінки</button>
+    </div>
+</div>
+
+<style>
+    .alt-name { font-weight: bold; font-size: 1.1rem; }
+</style>
+
+<script>
+    let alternatives = [];
+    let criteria = [];
+    let vectors = [];
+
+    async function loadData() {
+        try {
+            const [altResp, critResp, vecResp] = await Promise.all([
+                fetch('/api/Alternative'),
+                fetch('/api/Criterion'),
+                fetch('/api/Vector')
+            ]);
+
+            if (altResp.ok) alternatives = await altResp.json();
+            if (critResp.ok) criteria = await critResp.json();
+            if (vecResp.ok) vectors = await vecResp.json();
+
+            buildMatrix();
+        } catch (err) {
+            console.error("Error loading matrix data:", err);
+            alert("Помилка при завантаженні даних.");
+        }
+    }
+
+    function buildMatrix() {
+        const thead = document.getElementById('matrixHeader');
+        const tbody = document.getElementById('matrixBody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        let headRow = `<tr><th>Альтернатива \\ Критерій</th>`;
+        criteria.forEach(c => { headRow += `<th>${c.name}</th>`; });
+        headRow += `</tr>`;
+        thead.innerHTML = headRow;
+
+        alternatives.forEach(alt => {
+            let tr = document.createElement('tr');
+            let tdName = document.createElement('td');
+            tdName.innerText = alt.name;
+            tr.appendChild(tdName);
+
+            criteria.forEach(crit => {
+                let td = document.createElement('td');
+                let aid = alt.alternative_id || alt.Alternative_id;
+                let cid = crit.criterion_id || crit.Criterion_id;
+                let existingVec = vectors.find(v => (v.alternative_id || v.Alternative_id) === aid && (v.criterion_id || v.Criterion_id) === cid);
+                let val = existingVec ? existingVec.value : '';
+
+                let input = document.createElement('input');
+                input.className = 'form-control text-center vector-input';
+                input.dataset.altId = aid;
+                input.dataset.critId = cid;
+                input.dataset.oldValue = val;
+                input.value = val;
+                td.appendChild(input);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function saveAllMarks() {
+        const inputs = document.querySelectorAll('.vector-input');
+        let successCount = 0;
+        let errors = 0;
+
+        for (let input of inputs) {
+            let valStr = input.value.trim();
+            let oldValStr = input.dataset.oldValue || '';
+
+            if (valStr !== oldValStr) {
+                const vec = {
+                    Alternative_id: parseInt(input.dataset.altId),
+                    Criterion_id: parseInt(input.dataset.critId),
+                    Value: valStr
+                };
+
+                const resp = await fetch('/api/Vector', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(vec)
+                });
+                if (handleUnauthorized(resp)) return;
+
+                if (resp.ok) {
+                    successCount++;
+                    input.dataset.oldValue = valStr;
+                } else {
+                    errors++;
+                }
+            }
+        }
+        if (errors > 0) alert(`Помилок: ${errors}`);
+        else alert("Матрицю збережено!");
+    }
+
+    loadData();
+</script>

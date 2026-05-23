@@ -1,0 +1,419 @@
+@{
+    ViewData["Title"] = "Прийняття рішення";
+}
+
+<div class="container mt-4 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-end">
+                            <span class="badge bg-light text-primary fs-6 px-3 py-2 rounded-pill shadow-sm" id="progressBadge">Завантаження...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div id="loadingStep" class="text-center py-5">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                        <p class="mt-3 text-muted">Завантаження альтернатив та критеріїв...</p>
+                    </div>
+
+                    <div id="comparisonStep" style="display: none;">
+                        <h4 class="text-center mb-5 text-secondary fw-light">Яка з цих квартир вам подобається більше?</h4>
+                        
+                        <div class="row align-items-stretch mb-5 justify-content-center">
+                            <div class="col-md-5 mb-4 mb-md-0">
+                                <div class="card h-100 border-0 shadow-sm transition-hover" style="background: linear-gradient(135deg, #f8faff 0%, #ebf1ff 100%); border-top: 4px solid #4e73df !important;">
+                                    <div class="card-body p-4">
+                                        <div class="badge bg-primary mb-2">Варіант А</div>
+                                        <h3 class="text-primary mb-4 fw-bold" id="altAName">Alternative A</h3>
+                                        <div id="altADetails" class="mt-3">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-2 col-md-12 d-flex flex-column justify-content-center align-items-center px-4">
+                                <div class="d-grid gap-3 w-100">
+                                    <button class="btn btn-primary relation-btn shadow-sm py-2" data-rel=">">
+                                        <span class="d-block small opacity-75">А краща за Б</span>
+                                        <strong>А ≻ Б</strong>
+                                    </button>
+                                    <button class="btn btn-outline-primary relation-btn shadow-sm py-2" data-rel=">=">
+                                        <span class="d-block small opacity-75">А не гірша за Б</span>
+                                        <strong>А ≳ Б</strong>
+                                    </button>
+                                    <button class="btn btn-light border relation-btn shadow-sm py-2" data-rel="=">
+                                        <span class="d-block small opacity-75">Рівноцінні</span>
+                                        <strong>А ≈ Б</strong>
+                                    </button>
+                                    <button class="btn btn-outline-danger relation-btn shadow-sm py-2" data-rel="<=">
+                                        <span class="d-block small opacity-75">Б не гірша за А</span>
+                                        <strong>А ≲ Б</strong>
+                                    </button>
+                                    <button class="btn btn-danger relation-btn shadow-sm py-2" data-rel="<">
+                                        <span class="d-block small opacity-75">Б краща за А</span>
+                                        <strong>А ≺ Б</strong>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-md-5 mt-4 mt-md-0">
+                                <div class="card h-100 border-0 shadow-sm transition-hover" style="background: linear-gradient(135deg, #fffafa 0%, #ffeef0 100%); border-top: 4px solid #e74a3b !important;">
+                                    <div class="card-body p-4 text-end">
+                                        <div class="badge bg-danger mb-2">Варіант Б</div>
+                                        <h3 class="text-danger mb-4 fw-bold" id="altBName">Alternative B</h3>
+                                        <div id="altBDetails" class="mt-3">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="progress mb-4" style="height: 10px; border-radius: 5px;">
+                            <div id="compProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="resultStep" style="display: none;">
+                        <div class="row">
+                            <div class="col-lg-7">
+                                <h4 class="mb-4 d-flex align-items-center">
+                                    <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">1</span>
+                                    Матриця парних порівнянь
+                                </h4>
+                                <div class="table-responsive border rounded-3 mb-4">
+                                    <table class="table table-bordered mb-0 text-center align-middle" id="matrixTable">
+                                    
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-lg-5">
+                                <h4 class="mb-4 d-flex align-items-center">
+                                    <span class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">2</span>
+                                    Результати ранжування
+                                </h4>
+                                <div id="rankingList">
+                                </div>
+                                
+                                <div id="tieBreakerAlert" class="alert alert-warning mt-3" style="display:none;">
+                                    ⚠️ Виявлено однакові бали! Будь ласка, перетягніть рядки або відредагуйте ранг, щоб встановити <strong>строгий порядок</strong>.
+                                </div>
+
+                                <button id="saveBtn" class="btn btn-success btn-lg w-100 mt-4 shadow-sm py-3 fw-bold">
+                                    💾 Зберегти результати 
+                                </button>
+                                <button onclick="location.reload()" class="btn btn-link w-100 mt-2 text-decoration-none text-muted">🔄 Розпочати заново</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transition-hover {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .transition-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.1) !important;
+    }
+    .relation-btn {
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s;
+    }
+    .relation-btn:hover {
+        background-color: #4e73df;
+        color: white;
+        transform: scale(1.05);
+    }
+    .criterion-item {
+        margin-bottom: 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding-bottom: 0.5rem;
+    }
+    .criterion-name {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #858796;
+        letter-spacing: 1px;
+    }
+    .criterion-value {
+        font-weight: 600;
+        color: #3a3b45;
+    }
+    #matrixTable th {
+        background-color: #f8f9fc;
+        font-size: 0.8rem;
+    }
+    .ranking-card {
+        border-left: 4px solid #1cc88a;
+        margin-bottom: 10px;
+        background: #fdfdfd;
+    }
+    .rank-number {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #1cc88a;
+    }
+</style>
+
+<script>
+    let alternatives = [];
+    let criteria = [];
+    let vectors = [];
+    let comparisons = []; 
+    let pairs = [];
+    let currentPairIdx = 0;
+
+    async function init() {
+        try {
+            const [altResp, critResp, vecResp] = await Promise.all([
+                fetch('/api/Alternative'),
+                fetch('/api/Criterion'),
+                fetch('/api/Vector')
+            ]);
+
+            alternatives = await altResp.json();
+            criteria = await critResp.json();
+            vectors = await vecResp.json();
+
+            if (alternatives.length < 2) {
+                alert("Потрібно хоча б 2 альтернативи для порівняння.");
+                return;
+            }
+
+            for (let i = 0; i < alternatives.length; i++) {
+                for (let j = i + 1; j < alternatives.length; j++) {
+                    pairs.push([alternatives[i], alternatives[j]]);
+                }
+            }
+
+            document.getElementById('loadingStep').style.display = 'none';
+            document.getElementById('comparisonStep').style.display = 'block';
+            updateProgress();
+            showPair();
+
+        } catch (err) {
+            console.error("Initialization error:", err);
+            document.getElementById('loadingStep').innerHTML = `<div class="alert alert-danger">Помилка завантаження даних: ${err.message}</div>`;
+        }
+    }
+
+    function showPair() {
+        if (currentPairIdx >= pairs.length) {
+            finishComparisons();
+            return;
+        }
+
+        const [altA, altB] = pairs[currentPairIdx];
+        document.getElementById('altAName').innerText = altA.name;
+        document.getElementById('altBName').innerText = altB.name;
+
+        renderVectorDetails(altA, 'altADetails');
+        renderVectorDetails(altB, 'altBDetails');
+    }
+
+    function renderVectorDetails(alt, targetId) {
+        const container = document.getElementById(targetId);
+        container.innerHTML = '';
+        criteria.forEach(c => {
+            const vec = vectors.find(v => v.alternative_id === alt.alternative_id && v.criterion_id === c.criterion_id);
+            const val = vec ? vec.value : '—';
+            container.innerHTML += `
+                <div class="criterion-item">
+                    <span class="criterion-name">${c.name}</span>
+                    <span class="criterion-value">${val}</span>
+                </div>
+            `;
+        });
+    }
+
+    function updateProgress() {
+        const percent = (currentPairIdx / pairs.length) * 100;
+        document.getElementById('compProgress').style.width = percent + '%';
+        document.getElementById('progressBadge').innerText = `Крок ${currentPairIdx + 1} з ${pairs.length}`;
+    }
+
+    document.querySelectorAll('.relation-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const rel = btn.getAttribute('data-rel');
+            const [altA, altB] = pairs[currentPairIdx];
+            
+            comparisons.push({ aId: altA.alternative_id, bId: altB.alternative_id, rel: rel });
+            
+            currentPairIdx++;
+            updateProgress();
+            showPair();
+        });
+    });
+
+    function finishComparisons() {
+        document.getElementById('comparisonStep').style.display = 'none';
+        document.getElementById('resultStep').style.display = 'block';
+        document.getElementById('progressBadge').innerText = 'Результат розраховано';
+        document.getElementById('progressBadge').classList.replace('bg-light', 'bg-success');
+        document.getElementById('progressBadge').classList.replace('text-primary', 'text-white');
+
+        calculateMatrix();
+    }
+
+    function calculateMatrix() {
+        const n = alternatives.length;
+        const matrix = Array(n).fill(null).map(() => Array(n).fill('='));
+
+        comparisons.forEach(c => {
+            const i = alternatives.findIndex(a => a.alternative_id === c.aId);
+            const j = alternatives.findIndex(a => a.alternative_id === c.bId);
+            
+            matrix[i][j] = c.rel;
+            if (c.rel === '>') matrix[j][i] = '<';
+            else if (c.rel === '<') matrix[j][i] = '>';
+            else if (c.rel === '>=') matrix[j][i] = '<=';
+            else if (c.rel === '<=') matrix[j][i] = '>=';
+            else matrix[j][i] = '=';
+        });
+
+        for(let i=0; i<n; i++) matrix[i][i] = '=';
+
+        const table = document.getElementById('matrixTable');
+        let html = '<thead><tr><th></th>';
+        alternatives.forEach((a, idx) => html += `<th title="${a.name}">A${idx+1}</th>`);
+        html += '<th class="bg-light shadow-sm">Бал</th></tr></thead><tbody>';
+
+        const scores = [];
+
+        alternatives.forEach((a, i) => {
+            let rowScore = 0;
+            html += `<tr><th class="bg-light">${a.name} (A${i+1})</th>`;
+            alternatives.forEach((b, j) => {
+                const rel = matrix[i][j];
+                const isPositive = (rel === '>' || rel === '>=' || rel === '=');
+                if (isPositive && i !== j) rowScore++;
+                if (i === j) html += `<td class="bg-secondary opacity-25"> </td>`;
+                else html += `<td class="${isPositive ? 'fw-bold text-success' : 'text-muted'}">${rel}</td>`;
+            });
+            rowScore += 1;
+
+            html += `<td class="bg-light fw-bold">${rowScore}</td></tr>`;
+            scores.push({ id: a.alternative_id, name: a.name, score: rowScore });
+        });
+
+        html += '</tbody>';
+        table.innerHTML = html;
+
+        renderRanking(scores);
+    }
+
+    function renderRanking(scores) {
+        const sorted = [...scores].sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.id - b.id;
+        });
+
+        let hasTies = false;
+        for (let i = 0; i < sorted.length - 1; i++) {
+            if (sorted[i].score === sorted[i+1].score) hasTies = true;
+        }
+
+        if (hasTies) {
+            document.getElementById('tieBreakerAlert').style.display = 'block';
+        }
+
+        const list = document.getElementById('rankingList');
+        list.innerHTML = '';
+        
+        sorted.forEach((item, idx) => {
+            const rank = idx + 1;
+            item.assignedRank = rank;
+            list.innerHTML += `
+                <div class="card ranking-card shadow-sm p-3 mb-2" data-alt-id="${item.id}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="rank-number me-3">#${rank}</div>
+                            <div>
+                                <h5 class="mb-0 fw-bold">${item.name}</h5>
+                                <small class="text-muted">Кількість балів: ${item.score}</small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                             <input type="number" class="form-control form-control-sm rank-input" style="width: 60px;" value="${rank}" data-alt-id="${item.id}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('saveBtn').onclick = () => saveResults(sorted);
+    }
+
+    async function saveResults(sortedItems) {
+        const inputs = document.querySelectorAll('.rank-input');
+        const finalResults = [];
+        let ranksUsed = new Set();
+        let valid = true;
+
+        inputs.forEach(inp => {
+            const r = parseInt(inp.value);
+            if (isNaN(r) || r < 1 || r > alternatives.length) {
+                alert(`Некоректний ранг: ${inp.value}`);
+                valid = false;
+                return;
+            }
+            if (ranksUsed.has(r)) {
+                alert(`Ранг ${r} повторюється. Кожен ранг має бути унікальним (строгий порядок).`);
+                valid = false;
+                return;
+            }
+            ranksUsed.add(r);
+            finalResults.push({
+                Alternative_id: parseInt(inp.getAttribute('data-alt-id')),
+                Score: r
+            });
+        });
+
+        if (!valid) return;
+        if (ranksUsed.size !== alternatives.length) {
+            alert("Потрібно вказати ранги для всіх альтернатив без пропусків.");
+            return;
+        }
+
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Збереження...';
+
+        try {
+            for (const res of finalResults) {
+                const resp = await fetch('/api/Result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(res)
+                });
+                
+                if (resp.status === 401) {
+                    if (handleUnauthorized(resp)) return;
+                }
+
+                if (!resp.ok) throw new Error("Помилка при збереженні для ID " + res.Alternative_id);
+            }
+
+            alert("Результати успішно збережені!");
+            window.location.href = '/Result/Index';
+
+        } catch (err) {
+            alert("Помилка: " + err.message);
+            btn.disabled = false;
+            btn.innerText = '💾 Зберегти результати';
+        }
+    }
+
+    init();
+</script>
