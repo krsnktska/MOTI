@@ -36,6 +36,14 @@ public class LprController : Controller
         return View();
     }
 
+    [HttpGet("/Lpr/Profile")]
+    public IActionResult Profile()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+            return Redirect("/Lpr/Create");
+        return View();
+    }
+
     [HttpPost]
     public async Task<ActionResult<LPR>> CreateLpr(LPR lpr)
     {

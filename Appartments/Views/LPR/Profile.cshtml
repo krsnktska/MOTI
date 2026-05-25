@@ -1,0 +1,229 @@
+@{
+    ViewData["Title"] = "Мій профіль";
+}
+
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-primary text-white p-4">
+                    <h3 class="mb-0 fw-bold">Мій профіль</h3>
+                    <p class="mb-0 opacity-75 mt-1" id="profileSubtitle">Завантаження...</p>
+                </div>
+                <div class="card-body p-4">
+                    <div id="profileLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted">Завантаження профілю...</p>
+                    </div>
+
+                    <div id="profileForm" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Ім'я користувача</label>
+                            <input type="text" id="profileName" class="form-control" placeholder="Ваше ім'я">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Новий пароль</label>
+                            <input type="password" id="profilePassword" class="form-control" placeholder="Введіть новий пароль (обов'язково)">
+                            <div class="form-text">Для збереження змін потрібно ввести пароль.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Ранг (компетентність)</label>
+                            <input type="number" step="0.1" min="0" id="profileRank" class="form-control" placeholder="1.0">
+                        </div>
+                        <div id="saveMessage" class="mb-3" style="display:none;"></div>
+                        <button onclick="saveProfile()" class="btn btn-primary px-4 fw-bold">
+                            💾 Зберегти зміни
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header p-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+                    <h4 class="mb-0 fw-bold text-white">Моє ранжування альтернатив</h4>
+                    <p class="mb-0 mt-1" style="color:rgba(255,255,255,0.7);">Ваш особистий порядок уподобань</p>
+                </div>
+                <div class="card-body p-4">
+                    <div id="rankingsLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                    <div id="rankingsContent" style="display:none;"></div>
+                    <div id="rankingsEmpty" style="display:none;" class="text-center py-4">
+                        <p class="text-muted mb-3">Ви ще не оцінили альтернативи.</p>
+                        <a href="/Result/Compare" class="btn btn-primary px-4">⚔️ Перейти до порівняння</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .ranking-item {
+        border-left: 4px solid #4e73df;
+        background: #fdfdfd;
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 0.6rem;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .rank-badge {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #4e73df;
+        min-width: 2.5rem;
+        text-align: center;
+    }
+</style>
+
+<script>
+    let _lprId = null;
+
+    async function loadProfile() {
+        try {
+            const resp = await fetch('/api/Lpr/current');
+            if (!resp.ok) {
+                window.location.href = '/Lpr/Create';
+                return;
+            }
+            const current = await resp.json();
+            _lprId = current.lpr_id || current.LPR_id || current.lpR_id;
+
+            const allResp = await fetch('/api/Lpr');
+            const allLprs = await allResp.json();
+            const lpr = allLprs.find(l => (l.lpr_id || l.LPR_id || l.lpR_id) === _lprId);
+
+            if (!lpr) {
+                window.location.href = '/Lpr/Create';
+                return;
+            }
+
+            document.getElementById('profileSubtitle').textContent = lpr.name || lpr.Name;
+            document.getElementById('profileName').value = lpr.name || lpr.Name || '';
+            document.getElementById('profileRank').value = lpr.rank ?? lpr.Rank ?? 1;
+
+            document.getElementById('profileLoading').style.display = 'none';
+            document.getElementById('profileForm').style.display = 'block';
+
+            await loadRankings();
+        } catch (err) {
+            console.error(err);
+            window.location.href = '/Lpr/Create';
+        }
+    }
+
+    async function loadRankings() {
+        try {
+            const [myResp, altResp] = await Promise.all([
+                fetch('/api/Result/my'),
+                fetch('/api/Alternative')
+            ]);
+
+            document.getElementById('rankingsLoading').style.display = 'none';
+
+            if (!myResp.ok || !altResp.ok) {
+                document.getElementById('rankingsEmpty').style.display = 'block';
+                return;
+            }
+
+            const myResults = await myResp.json();
+            const alternatives = await altResp.json();
+
+            if (!myResults.length) {
+                document.getElementById('rankingsEmpty').style.display = 'block';
+                return;
+            }
+
+            const sorted = [...myResults].sort((a, b) => {
+                const sa = a.score ?? a.Score ?? 999;
+                const sb = b.score ?? b.Score ?? 999;
+                return sa - sb;
+            });
+
+            let html = '';
+            sorted.forEach(r => {
+                const altId = r.alternative_id || r.Alternative_id;
+                const score = r.score ?? r.Score ?? '?';
+                const alt = alternatives.find(a =>
+                    (a.alternative_id || a.Alternative_id) === altId
+                );
+                const altName = alt ? (alt.name || alt.Name) : `Альтернатива #${altId}`;
+                html += `
+                    <div class="ranking-item">
+                        <div class="rank-badge">#${score}</div>
+                        <div class="ms-3">
+                            <span class="fw-semibold">${altName}</span>
+                        </div>
+                    </div>`;
+            });
+
+            html += `<div class="mt-3 text-end">
+                <a href="/Result/Compare" class="btn btn-outline-primary btn-sm">🔄 Переоцінити</a>
+            </div>`;
+
+            document.getElementById('rankingsContent').innerHTML = html;
+            document.getElementById('rankingsContent').style.display = 'block';
+        } catch (err) {
+            document.getElementById('rankingsLoading').style.display = 'none';
+            document.getElementById('rankingsEmpty').style.display = 'block';
+        }
+    }
+
+    async function saveProfile() {
+        const name = document.getElementById('profileName').value.trim();
+        const password = document.getElementById('profilePassword').value;
+        const rank = parseFloat(document.getElementById('profileRank').value) || 1;
+
+        if (!name) {
+            showMessage("Ім'я не може бути порожнім.", 'danger');
+            return;
+        }
+        if (!password) {
+            showMessage("Введіть пароль для збереження.", 'danger');
+            return;
+        }
+
+        const payload = {
+            lpr_id: _lprId,
+            LPR_id: _lprId,
+            name,
+            Name: name,
+            password,
+            Password: password,
+            rank,
+            Rank: rank
+        };
+
+        try {
+            const resp = await fetch(`/api/Lpr/${_lprId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (resp.ok || resp.status === 204) {
+                showMessage('Профіль успішно оновлено!', 'success');
+                document.getElementById('profileSubtitle').textContent = name;
+                document.getElementById('profilePassword').value = '';
+            } else {
+                showMessage('Помилка при збереженні. Спробуйте ще раз.', 'danger');
+            }
+        } catch (err) {
+            showMessage('Помилка з\'єднання: ' + err.message, 'danger');
+        }
+    }
+
+    function showMessage(text, type) {
+        const el = document.getElementById('saveMessage');
+        el.className = `alert alert-${type}`;
+        el.textContent = text;
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    loadProfile();
+</script>

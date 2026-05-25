@@ -1,0 +1,270 @@
+@{
+    ViewData["Title"] = "Профіль голосування";
+}
+
+<div class="container mt-4 mb-5">
+
+    <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-primary text-white p-4">
+            <h3 class="mb-0 fw-bold">Профіль голосування</h3>
+            <p class="mb-0 opacity-75 mt-1">Уподобання ОПР щодо альтернатив (від найкращої до найгіршої)</p>
+        </div>
+        <div class="card-body p-4">
+            <div id="profileLoading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Завантаження профілю...</p>
+            </div>
+            <div id="profileContent" style="display:none;">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center align-middle mb-0" id="votingProfileTable">
+                    </table>
+                </div>
+                <p class="text-muted small mt-3 mb-0" id="profileFootnote"></p>
+            </div>
+            <div id="profileEmpty" style="display:none;" class="alert alert-info mb-0">
+                Недостатньо даних. Потрібно щоб принаймні один ОПР завершив ранжування всіх альтернатив.
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+        <div class="card-header p-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);">
+            <h3 class="mb-0 fw-bold text-white">Колективне прийняття рішення</h3>
+            <p class="mb-0 mt-1" style="color:rgba(255,255,255,0.7);">Правило відносної більшості з вибуванням</p>
+        </div>
+        <div class="card-body p-4">
+            <div id="decisionLoading" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Обчислення результатів...</p>
+            </div>
+
+            <div id="decisionContent" style="display:none;">
+                <div class="mb-5">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center">
+                        <span
+                            class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2"
+                            style="width:32px;height:32px;font-size:0.8rem;">1</span>
+                        Підрахунок голосів
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Для кожного кандидата підраховується кількість ОПР, які поставили його на перше місце.
+                        Якщо хтось набирає строгу більшість (&gt; 50%) — він перемагає.
+                    </p>
+                    <div id="round1Content"></div>
+                </div>
+
+                <div id="round2Section" style="display:none;" class="mb-5">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center">
+                        <span
+                            class="bg-warning text-dark rounded-circle d-inline-flex align-items-center justify-content-center me-2"
+                            style="width:32px;height:32px;font-size:0.8rem;">2</span>
+                        Другий тур — фінальне голосування між двома лідерами
+                    </h5>
+                    <p class="text-muted small mb-3">
+                        Профіль перебудовується: залишаються лише два кандидати з найбільшою кількістю голосів.
+                        Перемагає той, якому більшість ОПР надає перевагу над іншим.
+                    </p>
+                    <div id="round2Content"></div>
+                </div>
+
+                <div id="winnerSection" class="text-center py-5 rounded-3"
+                    style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #86efac;">
+                    <div class="text-success mb-2" style="font-size: 3rem;">🏆</div>
+                    <div class="display-5 fw-bold text-success mb-2" id="winnerName"></div>
+                    <p class="text-muted mb-0" id="winnerDescription"></p>
+                </div>
+            </div>
+
+            <div id="decisionError" style="display:none;" class="alert alert-warning mb-0"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #votingProfileTable thead th {
+        background-color: #4e73df;
+        color: white;
+        font-size: 0.85rem;
+    }
+
+    #votingProfileTable tbody tr:first-child td {
+        background-color: #e8f0fe;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #1a3a8f;
+    }
+
+    #votingProfileTable tbody tr:not(:first-child) td {
+        font-weight: 500;
+    }
+
+    #votingProfileTable td {
+        background-color: #f8f9fc;
+        font-weight: 600;
+        color: #5a5c69;
+        font-size: 0.9rem;
+    }
+
+    .vote-bar-wrap {
+        background: #e9ecef;
+        border-radius: 6px;
+        height: 12px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+
+    .vote-bar-fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.6s ease;
+    }
+
+    .finalist-card {
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+</style>
+
+<script>
+    async function loadAll() {
+        await Promise.all([loadProfile(), loadDecision()]);
+    }
+
+    async function loadProfile() {
+        try {
+            const resp = await fetch('/api/Voting/profile');
+            const data = await resp.json();
+
+            document.getElementById('profileLoading').style.display = 'none';
+
+            const oprs = data.oprs || [];
+            const alternatives = data.alternatives || [];
+
+            if (!oprs.length || !alternatives.length) {
+                document.getElementById('profileEmpty').style.display = 'block';
+                return;
+            }
+
+            const n = alternatives.length;
+            const table = document.getElementById('votingProfileTable');
+            let html = '<thead><tr>';
+            oprs.forEach((opr) => {
+                html += `<th>${opr.oprName || opr.OprName}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            // Preference rows
+            for (let pos = 0; pos < n; pos++) {
+                html += `<tr>`;
+                oprs.forEach(opr => {
+                    const names = opr.rankedNames || opr.RankedNames || [];
+                    html += `<td>${names[pos] || '—'}</td>`;
+                });
+                html += '</tr>';
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+
+            document.getElementById('profileFootnote').textContent = '';
+
+            document.getElementById('profileContent').style.display = 'block';
+        } catch (err) {
+            document.getElementById('profileLoading').style.display = 'none';
+            document.getElementById('profileEmpty').style.display = 'block';
+            console.error(err);
+        }
+    }
+
+    async function loadDecision() {
+        try {
+            const resp = await fetch('/api/Voting/collective-decision');
+            const data = await resp.json();
+
+            document.getElementById('decisionLoading').style.display = 'none';
+
+            if (data.error) {
+                document.getElementById('decisionError').textContent = data.error;
+                document.getElementById('decisionError').style.display = 'block';
+                return;
+            }
+
+            const totalVoters = data.totalVoters;
+            const rounds = data.rounds || [];
+
+            let containerHtml = '';
+
+            rounds.forEach((round) => {
+                const results = round.results || round.Results || [];
+                const eliminated = round.eliminatedName || round.EliminatedName;
+                const rNum = round.roundNumber || round.RoundNumber;
+                const maxVotes = Math.max(...results.map(r => r.votes || r.Votes || 0));
+
+                containerHtml += `
+                <div class="mb-5">
+                    <h5 class="fw-bold mb-3 d-flex align-items-center">
+                        <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2"
+                              style="width:32px;height:32px;font-size:0.8rem;">${rNum}</span>
+                        Тур ${rNum}
+                    </h5>
+                    <p class="text-muted small mb-3">Всього голосуючих: <strong>${totalVoters}</strong>. Для перемоги потрібно більше ${Math.floor(totalVoters / 2)} голосів.</p>
+                    <div class="row g-3 mb-3">`;
+
+                results.forEach(r => {
+                    const name = r.alternativeName || r.AlternativeName;
+                    const votes = r.votes || r.Votes || 0;
+                    const pct = totalVoters > 0 ? Math.round(votes / totalVoters * 100) : 0;
+                    const isMajority = votes > totalVoters / 2;
+                    const isEliminated = name === eliminated;
+
+                    let barColor = '#adb5bd';
+                    if (isMajority) barColor = '#1cc88a';
+                    else if (isEliminated) barColor = '#e74a3b';
+                    else if (votes === maxVotes) barColor = '#4e73df';
+
+                    let borderStyle = '';
+                    if (isMajority) borderStyle = 'border: 2px solid #1cc88a !important;';
+                    else if (isEliminated) borderStyle = 'border: 2px solid #e74a3b !important; opacity: 0.8;';
+
+                    containerHtml += `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm p-3 h-100" style="${borderStyle}">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold ${isEliminated ? 'text-danger text-decoration-line-through' : ''}">${name}</span>
+                                    <span class="badge" style="background:${barColor}">${votes} гол.</span>
+                                </div>
+                                <div class="vote-bar-wrap">
+                                    <div class="vote-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+                                </div>
+                                <small class="text-muted mt-1">${pct}% від загальної кількості</small>
+                                ${isMajority ? '<div class="mt-2 text-success small fw-bold">✓ Строга більшість!</div>' : ''}
+                                ${isEliminated ? '<div class="mt-2 text-danger small fw-bold">✗ Вибуває</div>' : ''}
+                            </div>
+                        </div>`;
+                });
+
+                containerHtml += `</div>
+                </div>`;
+            });
+
+            document.getElementById('round1Content').innerHTML = containerHtml;
+            document.getElementById('round2Section').style.display = 'none';
+
+            const winner = data.winner || data.Winner;
+            const winnerRound = data.winnerRound || data.WinnerRound;
+            document.getElementById('winnerName').textContent = winner;
+            document.getElementById('winnerDescription').textContent = 'Переможець за правилом відносної більшості з вибуванням (визначено в турі ' + winnerRound + ')';
+
+            document.getElementById('winnerSection').style.display = 'block';
+            document.getElementById('decisionContent').style.display = 'block';
+
+        } catch (err) {
+            document.getElementById('decisionLoading').style.display = 'none';
+            document.getElementById('decisionError').textContent = 'Помилка при обчисленні результатів: ' + err.message;
+            document.getElementById('decisionError').style.display = 'block';
+            console.error(err);
+        }
+    }
+
+    loadAll();
+</script>
