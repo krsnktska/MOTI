@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"] = "Конкуренція авіакомпаній";
+}
+
+<div class="page-header">
+    <h1 class="mb-1">✈ Конкуренція авіакомпаній</h1>
+    <p class="mb-0 opacity-75">Антагоністична гра з нульовою сумою · Лабораторна робота №4</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">Опис конфліктної ситуації</div>
+            <div class="card-body">
+                <p>
+                    Дві авіакомпанії — <strong>Alpha Airlines</strong> та <strong>Beta Airlines</strong> —
+                    одночасно та незалежно обирають цінові стратегії на одному і тому ж популярному маршруті.
+                    Кожна з них прагне захопити максимальну частку ринку пасажирів.
+                </p>
+                <p>
+                    Гра є <em>антагоністичною з нульовою сумою</em>: кожен відсоток ринку, який виграє
+                    одна авіакомпанія, рівно на стільки ж втрачає інша.
+                </p>
+                <h6 class="mt-3">Стратегії кожного гравця:</h6>
+                <ul>
+                    <li><strong>Преміум</strong> — висока ціна, покращений сервіс, преміум-клас;</li>
+                    <li><strong>Економ</strong> — середня ціна, стандартний рівень обслуговування;</li>
+                    <li><strong>Бюджет</strong> — низька ціна, мінімальний сервіс (лоукост).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">Математична модель</div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    Матриця виграшів гравця 1 (Alpha Airlines), % частки ринку.<br>
+                    Нульова сума: виграш P2 = −виграш P1.
+                </p>
+                <table class="matrix-table mx-auto mb-3">
+                    <tr>
+                        <th>Alpha \ Beta</th>
+                        <th>Преміум</th>
+                        <th>Економ</th>
+                        <th>Бюджет</th>
+                    </tr>
+                    <tr>
+                        <th>Преміум</th>
+                        <td class="cell-zero">0</td>
+                        <td class="cell-negative">−2</td>
+                        <td class="cell-negative">−4</td>
+                    </tr>
+                    <tr>
+                        <th>Економ</th>
+                        <td class="cell-positive">+3</td>
+                        <td class="cell-positive">+1</td>
+                        <td class="cell-negative">−1</td>
+                    </tr>
+                    <tr>
+                        <th>Бюджет</th>
+                        <td class="cell-positive">+5</td>
+                        <td class="cell-positive">+3</td>
+                        <td class="cell-zero">0</td>
+                    </tr>
+                </table>
+                <p class="small text-muted">
+                    Максимінна стратегія гравця 1: <strong>Бюджет</strong> (гарантований виграш ≥ 0).
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-md-6">
+        <a asp-action="Setup" class="btn btn-primary btn-lg w-100 py-3">
+            ⚙ Налаштувати матрицю гри
+        </a>
+    </div>
+    <div class="col-md-6">
+        <a asp-action="Play" class="btn btn-success btn-lg w-100 py-3">
+            ▶ Розпочати гру
+        </a>
+    </div>
+</div>

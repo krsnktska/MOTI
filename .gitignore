@@ -3,4 +3,10 @@ Appartments/bin/
 Appartments/appsettings.*.json
 Appartments/appsettings.Development.json
 Appartments/.vscode/
+AirlineGame/obj/
+AirlineGame/bin/
+AirlineGame/appsettings.*.json
+AirlineGame/appsettings.Development.json
+AirlineGame/.vscode/
+
 

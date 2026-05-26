@@ -1,0 +1,204 @@
+@model AirlineGame.Models.PlayViewModel
+@{
+    ViewData["Title"] = "Гра";
+    var p1s = Model.Game.Player1Strategies.ToList();
+    var p2s = Model.Game.Player2Strategies.ToList();
+    var lr  = Model.LastRound;
+    var ses = Model.Session;
+}
+
+<div class="page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h1 class="mb-1">▶ Ігровий стіл</h1>
+        <p class="mb-0 opacity-75">@Model.Game.Player1Name vs @Model.Game.Player2Name</p>
+    </div>
+    @if (ses != null)
+    {
+        <div class="d-flex gap-3">
+            <div class="score-badge score-p1 text-center">
+                <div class="small">@Model.Game.Player1Name</div>
+                <div>@ses.Player1TotalScore</div>
+            </div>
+            <div class="score-badge score-p2 text-center">
+                <div class="small">@Model.Game.Player2Name</div>
+                <div>@ses.Player2TotalScore</div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="row g-4">
+    <!-- Left: game matrix with highlighted cell -->
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header">Матриця гри (виграш @Model.Game.Player1Name)</div>
+            <div class="card-body overflow-auto">
+                <table class="matrix-table mx-auto">
+                    <tr>
+                        <th style="background:#455a64">P1 \ P2</th>
+                        @foreach (var s in p2s)
+                        {
+                            <th>@s.Name</th>
+                        }
+                    </tr>
+                    @for (int r = 0; r < p1s.Count; r++)
+                    {
+                        <tr>
+                            <th>@p1s[r].Name</th>
+                            @for (int c = 0; c < p2s.Count; c++)
+                            {
+                                int val = Model.Game.GetPayoff(r, c);
+                                bool isActive = lr != null && lr.Player1StrategyIndex == r && lr.Player2StrategyIndex == c;
+                                bool isMaximin = Model.ShowMaximin && Model.MaximinResult.StrategyIndex == r;
+                                string cellClass = val > 0 ? "cell-positive" : (val < 0 ? "cell-negative" : "cell-zero");
+                                if (isActive) cellClass += " cell-active";
+                                string border = isMaximin ? "outline: 3px dashed #ff6f00;" : "";
+                                <td class="@cellClass" style="@border" title="P1: @val, P2: @(-val)">
+                                    @(val > 0 ? "+" : "")@val
+                                    @if (isActive)
+                                    {
+                                        <span style="font-size:.6rem;display:block">◀ хід</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </table>
+                @if (Model.ShowMaximin)
+                {
+                    <div class="alert alert-warning mt-3 mb-0 small">
+                        <strong>Максимінна стратегія Гравця 1:</strong>
+                        <strong>«@p1s[Model.MaximinResult.StrategyIndex].Name»</strong>
+                        — гарантує мінімальний виграш не менше
+                        <strong>@(Model.MaximinResult.MinPayoff > 0 ? "+" : "")@Model.MaximinResult.MinPayoff</strong>
+                        незалежно від дій суперника.
+                        <br/>
+                        <span class="text-muted">Рядок підкреслено пунктирною рамкою.</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- History table -->
+        @if (Model.History.Count > 0)
+        {
+            <div class="card">
+                <div class="card-header">Історія раундів</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Раунд</th>
+                                <th>P1 стратегія</th>
+                                <th>P2 стратегія</th>
+                                <th>Виграш P1</th>
+                                <th>Виграш P2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var round in Model.History.AsEnumerable().Reverse())
+                            {
+                                bool isLast = round == Model.LastRound;
+                                <tr class="@(isLast ? "table-warning fw-bold" : "")">
+                                    <td>@round.RoundNumber</td>
+                                    <td>@(round.Player1StrategyIndex < p1s.Count ? p1s[round.Player1StrategyIndex].Name : "?")</td>
+                                    <td>@(round.Player2StrategyIndex < p2s.Count ? p2s[round.Player2StrategyIndex].Name : "?")</td>
+                                    <td class="@(round.Player1Payoff > 0 ? "text-success" : round.Player1Payoff < 0 ? "text-danger" : "")">
+                                        @(round.Player1Payoff > 0 ? "+" : "")@round.Player1Payoff
+                                    </td>
+                                    <td class="@(round.Player2Payoff > 0 ? "text-success" : round.Player2Payoff < 0 ? "text-danger" : "")">
+                                        @(round.Player2Payoff > 0 ? "+" : "")@round.Player2Payoff
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right: controls -->
+    <div class="col-lg-5">
+        @if (lr != null)
+        {
+            <div class="card mb-4 border-2 @(lr.Player1Payoff > 0 ? "border-success" : lr.Player1Payoff < 0 ? "border-danger" : "border-warning")">
+                <div class="card-header @(lr.Player1Payoff > 0 ? "bg-success" : lr.Player1Payoff < 0 ? "bg-danger" : "bg-warning text-dark")">
+                    Результат раунду @lr.RoundNumber
+                </div>
+                <div class="card-body">
+                    <div class="row text-center g-3 mb-3">
+                        <div class="col-6">
+                            <div class="small text-muted">Ваш хід</div>
+                            <div class="fw-bold fs-5">@p1s[lr.Player1StrategyIndex].Name</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">Хід суперника</div>
+                            <div class="fw-bold fs-5">@p2s[lr.Player2StrategyIndex].Name</div>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row text-center g-3">
+                        <div class="col-6">
+                            <div class="small text-muted">@Model.Game.Player1Name</div>
+                            <div class="score-badge @(lr.Player1Payoff >= 0 ? "score-p1" : "bg-danger text-white") fs-4">
+                                @(lr.Player1Payoff > 0 ? "+" : "")@lr.Player1Payoff
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="small text-muted">@Model.Game.Player2Name</div>
+                            <div class="score-badge @(lr.Player2Payoff >= 0 ? "score-p1 bg-success text-white" : "score-p2") fs-4">
+                                @(lr.Player2Payoff > 0 ? "+" : "")@lr.Player2Payoff
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Move form -->
+        <div class="card mb-4">
+            <div class="card-header">Оберіть стратегію (@Model.Game.Player1Name)</div>
+            <div class="card-body">
+                <form method="post" asp-action="PlayMove">
+                    <input type="hidden" name="SessionId" value="@(ses?.Id ?? 0)" />
+                    <div class="d-grid gap-2 mb-3">
+                        @for (int i = 0; i < p1s.Count; i++)
+                        {
+                            <button type="submit" name="ChosenStrategy" value="@i"
+                                    class="btn btn-outline-primary text-start py-3 px-4">
+                                <strong>@p1s[i].Name</strong>
+                                <br/><small class="text-muted">@p1s[i].Description</small>
+                            </button>
+                        }
+                    </div>
+                </form>
+
+                <div class="d-grid gap-2">
+                    <form method="post" asp-action="ShowMaximin">
+                        <input type="hidden" name="SessionId" value="@(ses?.Id ?? 0)" />
+                        <button type="submit" class="btn btn-warning w-100">
+                            🧮 Показати оптимальну стратегію (максимін)
+                        </button>
+                    </form>
+                    <form method="post" asp-action="NewSession">
+                        <button type="submit" class="btn btn-outline-secondary w-100">🔄 Нова гра</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Про принцип максиміну</div>
+            <div class="card-body small text-muted">
+                <p>
+                    Гравець 1 шукає стратегію, яка <em>максимізує мінімальний гарантований виграш</em>
+                    незалежно від дій суперника.
+                </p>
+                <p class="mb-0">
+                    Для кожного рядка знаходиться мінімум, потім обирається рядок із найбільшим мінімумом.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

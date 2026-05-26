@@ -1,0 +1,87 @@
+@model AirlineGame.Models.SetupViewModel
+@{
+    ViewData["Title"] = "Налаштування гри";
+    var p1s = Model.Game.Player1Strategies.ToList();
+    var p2s = Model.Game.Player2Strategies.ToList();
+}
+
+<div class="page-header">
+    <h1 class="mb-1">⚙ Налаштування матриці гри</h1>
+    <p class="mb-0 opacity-75">Редагуйте виграші гравця 1 та назви гравців</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<form method="post">
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">Назви гравців</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Гравець 1</label>
+                        <input asp-for="Game.Player1Name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Гравець 2</label>
+                        <input asp-for="Game.Player2Name" class="form-control" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">Підказка</div>
+                <div class="card-body small text-muted">
+                    <p>Значення у матриці — виграш <strong>Гравця 1</strong> (у % частки ринку).</p>
+                    <p>Оскільки гра з нульовою сумою: виграш гравця 2 = −виграш гравця 1.</p>
+                    <p>Позитивні значення — перевага Гравця 1, від'ємні — перевага Гравця 2.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Матриця виграшів (Гравець 1)</div>
+        <div class="card-body overflow-auto">
+            <table class="matrix-table mx-auto">
+                <tr>
+                    <th style="background:#455a64">@Model.Game.Player1Name \ @Model.Game.Player2Name</th>
+                    @for (int c = 0; c < p2s.Count; c++)
+                    {
+                        <th>@p2s[c].Name</th>
+                    }
+                </tr>
+                @for (int r = 0; r < p1s.Count; r++)
+                {
+                    <tr>
+                        <th>@p1s[r].Name</th>
+                        @for (int c = 0; c < p2s.Count; c++)
+                        {
+                            <td>
+                                <input type="number"
+                                       name="Matrix[@r][@c]"
+                                       value="@Model.Matrix[r][c]"
+                                       class="form-control text-center fw-bold border-0 bg-transparent"
+                                       style="width:70px" />
+                            </td>
+                        }
+                    </tr>
+                }
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex gap-3">
+        <button type="submit" class="btn btn-primary btn-lg px-5">
+            💾 Зберегти матрицю
+        </button>
+        <a asp-action="Play" class="btn btn-success btn-lg px-5">▶ Грати</a>
+    </div>
+</form>

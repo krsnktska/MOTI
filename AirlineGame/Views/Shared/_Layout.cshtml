@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Матрична гра</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        :root {
+            --primary:   #1a237e;
+            --accent:    #0d47a1;
+            --highlight: #e3f2fd;
+            --win:       #1b5e20;
+            --lose:      #b71c1c;
+            --neutral:   #37474f;
+        }
+        body { background: #f5f7fa; font-family: 'Segoe UI', sans-serif; color: #212121; }
+        .navbar { background: var(--primary) !important; }
+        .navbar-brand, .nav-link { color: #fff !important; font-weight: 600; }
+        .nav-link:hover { color: #90caf9 !important; }
+        .page-header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff; border-radius: 12px; padding: 2rem; margin-bottom: 2rem;
+        }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+        .card-header { background: var(--primary); color: #fff; border-radius: 12px 12px 0 0 !important; font-weight: 600; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); }
+        .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+        .matrix-table { border-collapse: separate; border-spacing: 4px; }
+        .matrix-table td, .matrix-table th {
+            width: 80px; height: 60px; text-align: center; vertical-align: middle;
+            border-radius: 8px; font-size: 1.1rem; font-weight: 600;
+        }
+        .matrix-table th { background: var(--primary); color: #fff; font-size: .85rem; }
+        .matrix-table td { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.1); cursor: default; }
+        .cell-positive { background: #e8f5e9 !important; color: var(--win); }
+        .cell-negative { background: #ffebee !important; color: var(--lose); }
+        .cell-zero    { background: #fffde7 !important; color: var(--neutral); }
+        .cell-active  { outline: 3px solid #ffd600 !important; transform: scale(1.08); transition: .2s; }
+        .score-badge { font-size: 1.5rem; font-weight: 700; border-radius: 8px; padding: .4rem 1rem; }
+        .score-p1 { background: #e3f2fd; color: var(--primary); }
+        .score-p2 { background: #fce4ec; color: #880e4f; }
+        footer { margin-top: 3rem; padding: 1rem 0; border-top: 1px solid #e0e0e0; color: #9e9e9e; font-size: .85rem; }
+    </style>
+</head>
+<body>
+<header>
+    <nav class="navbar navbar-expand-sm mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" asp-page="/Index">✈ Матрична гра</a>
+            <div class="navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" asp-page="/Index">Головна</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Setup">Налаштування</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-page="/Play">Грати</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+<div class="container pb-4">
+    <main>@RenderBody()</main>
+</div>
+<footer>
+    <div class="container text-center">
+        Лабораторна робота №4 · Моделювання та вирішення матричних ігор · 2026
+    </div>
+</footer>
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
